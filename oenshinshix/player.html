@@ -3,10 +3,16 @@
 <head>
 	<title>oenshinshix Harem Player</title>
 	<script>
+		var params = new URLSearchParams(window.location.search)
+
+		var meta_1 = document.createElement("meta")
+		meta_1.content = params.get("i")
+		meta_1.setAttribute("property", "og:image")
+		document.head.appendChild(meta_1)
+
 		function play() {
 			document.querySelector('#mute').remove();
 
-			var params = new URLSearchParams(window.location.search)
 			if (i = params.get("i")) {
 				document.querySelector("#anim").src = i
 			}
