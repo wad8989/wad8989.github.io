@@ -2,9 +2,13 @@
 
 <head>
 	<title>oenshinshix Harem Player</title>
-	<meta content="oenshinshix Harem Player" property="og:title">
 	<script>
 		var params = new URLSearchParams(window.location.search)
+
+		var meta_1 = document.createElement("meta")
+		meta_1.content = "Click to play " + (n = params.get("n") ? n : "")
+		meta_1.setAttribute("property", "og:description")
+		document.head.appendChild(meta_1)
 
 		function play() {
 			document.querySelector('#mute').remove();
