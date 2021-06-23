@@ -377,9 +377,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         speech_msg.style.wordBreak = "break-all"
         speech_msg.style.overflowWrap = "break-word"
         speech_msg.style.whiteSpace = "no-wrap"
-        if (p = search_params.get("speech_size")) {
-            speech_msg.style.fontSize *= eval(p)
-        }
 
         ret.addEventListener("onsetupui", () => {
             document.querySelector("#player_canvas").appendChild(speech_div)
