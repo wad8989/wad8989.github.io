@@ -249,7 +249,8 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_msg.style.position = "absolute"
         narrative_msg.style.opacity = 0
         narrative_msg.style.display = "inline-block"
-        narrative_msg.style.width = "70%"
+        narrative_msg.style.maxWidth = "70%"
+        narrative_msg.style.width = "fit-content"
         narrative_msg.style.height = "auto"
         narrative_msg.style.fontFamily = "SceneFont"
         narrative_msg.style.fontSize = ((p = search_params.get("narrative_size")) ? p : 1) * 4 + "em"
