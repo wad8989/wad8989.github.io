@@ -231,8 +231,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
             this["anim"] && this["anim"].stop()
             this["anim"] = null
-
-            this["standing"] = null
         }
     }
 
@@ -489,37 +487,63 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     }()
 
     var standing = function () {
-        var standing_img = document.createElement("img")
-        standing_img.style.display = "none"
-        standing_img.style.position = "absolute"
-        standing_img.style.height = "200em"
-        standing_img.style.bottom = "0"
-        standing_img.style.left = "50%"
-        standing_img.style.transform = "translate(-50%, 50%)"
-        standing_img.style.zIndex = "-100"
-
-        ret.addEventListener("onsetupui", () => {
-            document.querySelector("#player_canvas").appendChild(standing_img)
-        })
+        var standing_img = {
+            0: null,
+            1: null,
+        }
 
         ret.addEventListener("onreset", () => {
-            standing_img.remove()
+            Object.values(standing_img).filter(e => e != null).forEach(
+                e => e.remove()
+            )
         })
+
+        function put_standing(idx, image, scale) {
+            (scale === undefined) && (scale = 1)
+            var img = standing_img[idx] || (
+                d = document.createElement("img"),
+                document.querySelector("#player_canvas").appendChild(d),
+                d.id = "standing_" + idx,
+                d.style.display = "none",
+                d.style.position = "absolute",
+                d.style.height = scale * 100 + "em",
+                d.style.bottom = "0",
+                d.style.left = "50%",
+                d.style.transform = "translate(-50%, 50%)",
+                d.style.zIndex = "-100",
+                d
+            )
+            img.src = image.currentSrc
+            img.style.display = null
+        }
 
         return {
             show: async function (cue, content) {
-                image = content.data.standing[cue["image"]]
-
-                playing_status["standing"] = standing_img
-
-                standing_img.src = image.currentSrc
-                standing_img.style.display = null
+                var image = content.data.standing[cue["image"]]
+                put_standing(cue["chara.idx"] || 0, image, cue["image.scale"])
             },
-            set_spotlight: function (flag) {
-                standing_img.style.filter = flag ? null : "brightness(50%)"
+            set_spotlight: function (flag, idx) {
+                var targets = []
+                if (idx === undefined) { targets = Object.values(standing_img).filter(e => e != null) }
+                else { targets.push(standing_img[idx]) }
+
+                targets.forEach(
+                    div => {
+                        div.style.zIndex = flag ? "-100" : "-199"
+                        div.style.filter = flag ? null : "brightness(50%)"
+                    }
+                )
             },
-            hide: async function () {
-                standing_img.style.display = "none"
+            hide: async function (idx) {
+                var targets = []
+                if (idx === undefined) { targets = Object.values(standing_img) }
+                else { targets.push(standing_img[idx]) }
+
+                targets.forEach(
+                    div => {
+                        div.style.display = "none"
+                    }
+                )
             },
         }
     }()
