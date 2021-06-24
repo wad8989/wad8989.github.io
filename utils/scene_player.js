@@ -1,4 +1,4 @@
-const hotkey = {
+var hotkey = {
     Exit: 27,
     Next: 13,
     ToggleLoopingSpeech: 82,
