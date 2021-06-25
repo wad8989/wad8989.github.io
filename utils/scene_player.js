@@ -1,4 +1,4 @@
-var hotkey = {
+var player_hotkey = {
     Exit: 27,
     Next: 13,
     ToggleLoopingSpeech: 82,
@@ -589,19 +589,19 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     // Event listener
     ret.addEventListener("onsetupui", function () {
         var callback = (e) => {
-            if (e.keyCode == hotkey.Exit) {
+            if (e.keyCode == player_hotkey.Exit) {
                 ret.stop()
                 update_page_title(PageState.None)
             }
-            if (e.keyCode == hotkey.ToggleLoopingSpeech) {
+            if (e.keyCode == player_hotkey.ToggleLoopingSpeech) {
                 playing_status.should_loop_speech = !playing_status.should_loop_speech
                 update_page_title(playing_status.should_loop_speech ? PageState.Looping : PageState.None)
             }
-            if (e.keyCode == hotkey.ToggleSpeechText) {
+            if (e.keyCode == player_hotkey.ToggleSpeechText) {
                 playing_status.should_display_speech_text = !playing_status.should_display_speech_text
                 speech.update_message_visibility()
             }
-            if (e.keyCode == hotkey.ToggleNarrativeText) {
+            if (e.keyCode == player_hotkey.ToggleNarrativeText) {
                 playing_status.should_display_narrative_text = !playing_status.should_display_narrative_text
                 narrative.update_message_visibility()
             }
@@ -670,7 +670,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         event_name = event_name || "keydown"
         once === undefined && (once = true)
         var callback = (e) => {
-            if (e.keyCode == hotkey.Next) {
+            if (e.keyCode == player_hotkey.Next) {
                 f(e)
             }
         }
