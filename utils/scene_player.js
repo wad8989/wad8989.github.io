@@ -209,6 +209,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 active && play_scene(scene_content)
             },
             stop: function () {
+                update_page_title(PageState.None)
                 active = false
                 reset()
             }
@@ -328,10 +329,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 await async function () {
                     return new Promise(
                         resolve => {
+                            var next_listener
                             var on_exit = () => {
+                                next_listener.cancel()
                                 resolve()
                             }
-                            listen_on_next_btn(on_exit)
+                            next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true })
                             narrative_div.addEventListener("onvisibilityupdate", () => {
                                 if (!playing_status["should_display_narrative_text"]) {
                                     wait(200).then(resolve)
@@ -443,8 +446,10 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     await async function () {
                         return new Promise(
                             resolve => {
+                                var next_listener
                                 var a = data["vo"][cue["audio"]]
                                 var on_exit = () => {
+                                    next_listener && next_listener.cancel()
                                     resolve()
                                 }
 
@@ -457,11 +462,10 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
                                 a.play()
 
-                                listen_on_next_btn(() => {
+                                next_listener = listen_on(ret, "onrequestnext", () => {
                                     a.pause()
                                     on_exit()
-                                })
-
+                                }, { once: true })
                             }
                         )
                     }()
@@ -470,10 +474,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     await async function () {
                         return new Promise(
                             resolve => {
+                                var next_listener
                                 var on_exit = () => {
+                                    next_listener && next_listener.cancel()
                                     resolve()
                                 }
-                                listen_on_next_btn(on_exit)
+                                next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true })
                                 wait(playing_status.should_display_speech_text ?
                                     cue["message.len"] * wait_per_char + 1000 :
                                     1000
@@ -585,10 +591,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         anim_div.style.zIndex = 100
         anim_div.style.display = "none"
         anim_div.style.position = "absolute"
+        anim_div.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio)) translate(50%, 50%)"
 
         var rescale_self = function () {
-            anim_div.style.transform = "translate(-50%, -50%) scale(" + anim_div.parentNode.clientWidth / anim_div.clientWidth + ") translate(50%, 50%)"
+            anim_div.style.setProperty("--scale-ratio", anim_div.parentNode.clientWidth / anim_div.clientWidth)
         }
+
         window.addEventListener("resize", rescale_self)
         ret.addEventListener("onreset", () => {
             window.removeEventListener("resize", rescale_self)
@@ -620,34 +628,33 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
     // Event listener
     ret.addEventListener("onsetupui", function () {
-        var callback = (e) => {
-            if (e.keyCode == player_hotkey.Exit) {
-                ret.stop()
-                update_page_title(PageState.None)
-            }
-            if (e.keyCode == player_hotkey.ToggleLoopingSpeech) {
-                playing_status.should_loop_speech = !playing_status.should_loop_speech
-                update_page_title(playing_status.should_loop_speech ? PageState.Looping : PageState.None)
-            }
-            if (e.keyCode == player_hotkey.ToggleSpeechText) {
-                playing_status.should_display_speech_text = !playing_status.should_display_speech_text
-                speech.update_message_visibility()
-            }
-            if (e.keyCode == player_hotkey.ToggleNarrativeText) {
-                playing_status.should_display_narrative_text = !playing_status.should_display_narrative_text
-                narrative.update_message_visibility()
-            }
-        }
-        window.addEventListener(
+        var keydown = listen_on(
+            window,
             "keydown",
-            callback
+            (e) => {
+                if (e.keyCode == player_hotkey.Exit) {
+                    ret.stop()
+                }
+                if (e.keyCode == player_hotkey.ToggleLoopingSpeech) {
+                    playing_status.should_loop_speech = !playing_status.should_loop_speech
+                    update_page_title(playing_status.should_loop_speech ? PageState.Looping : PageState.None)
+                }
+                if (e.keyCode == player_hotkey.ToggleSpeechText) {
+                    playing_status.should_display_speech_text = !playing_status.should_display_speech_text
+                    speech.update_message_visibility()
+                }
+                if (e.keyCode == player_hotkey.ToggleNarrativeText) {
+                    playing_status.should_display_narrative_text = !playing_status.should_display_narrative_text
+                    narrative.update_message_visibility()
+                }
+                if (e.keyCode == player_hotkey.Next) {
+                    ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, }))
+                }
+            }
         )
 
-        ret.addEventListener("onreset", () => {
-            window.removeEventListener(
-                "keydown",
-                callback
-            )
+        listen_on(ret, "onreset", () => {
+            keydown.cancel()
         }, { once: true })
     })
 
@@ -686,8 +693,9 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         var canvas = document.createElement("div")
         canvas.id = "player_canvas"
         viewport.appendChild(canvas)
+        canvas.style.transform = "translate(-50%, 0%) scale(var(--scale-ratio)) translate(50%, 0%)"
         var rescale_self = function () {
-            canvas.style.transform = "translate(-50%, 0%) scale(" + viewport.clientWidth / 1920.0 + ") translate(50%, 0%)"
+            canvas.style.setProperty("--scale-ratio", viewport.clientWidth / canvas.clientWidth)
         }
         rescale_self()
         window.addEventListener("resize", rescale_self)
@@ -698,19 +706,13 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         ret.dispatchEvent(new Event("onsetupui"))
     }
 
-    function listen_on_next_btn(f, event_name, once) {
-        event_name = event_name || "keydown"
-        once === undefined && (once = true)
-        var callback = (e) => {
-            if (e.keyCode == player_hotkey.Next) {
-                f(e)
+    function listen_on(target, event_name, f, options) {
+        target.addEventListener(event_name, f, options)
+        return {
+            cancel: function () {
+                target.removeEventListener(event_name, f, options)
             }
         }
-        window.addEventListener(event_name, callback, { once: once })
-
-        ret.addEventListener("onreset", () => {
-            window.removeEventListener(event_name, callback)
-        })
     }
 
     async function play_scene(content) {
@@ -768,16 +770,14 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             prev_cue = cue
         }
 
-        listen_on_next_btn((e) => {
-            pressing = e.repeat
+        var keep_pressing_next_listener = listen_on(ret, "onrequestnext", (e) => {
+            pressing = e.triggerEvent["repeat"]
 
             if (!pressing) {
-                listen_on_next_btn(() => {
-                    ret.stop()
-                    update_page_title(PageState.None)
-                }, "keyup")
+                keep_pressing_next_listener.cancel()
+                ret.stop()
             }
-        }, "keydown", false)
+        })
     }
 
     return ret;
