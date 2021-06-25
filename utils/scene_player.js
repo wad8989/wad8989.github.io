@@ -216,7 +216,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     )
 
     var active = false
-    var font
     var playing_status = {
         reset: function () {
             this["should_loop_speech"] = false
@@ -268,11 +267,29 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_msg.style.transform = "translate(-50%, -50%)"
 
         ret.addEventListener("onreset", () => {
+            _ = (style = document.querySelector("#player_narrative_style")) && style.remove()
+
             narrative_msg.innerHTML = ""
             narrative_div.remove()
         })
 
         ret.addEventListener("onsetupui", () => {
+            document.querySelector("#player_narrative_style") || (
+                s = document.createElement("style"),
+                document.head.append(s),
+                s.type = 'text/css',
+                s.id = "player_narrative_style",
+                style_sheet = s.sheet,
+                (
+                    style_sheet.insertRule(".narrative:after { content: attr(innerHTML) } "),
+                    style_sheet.insertRule(".narrative:after { position: absolute; } "),
+                    style_sheet.insertRule(".narrative:after { left: 0px; top: 0px} "),
+                    style_sheet.insertRule(".narrative:after { z-index: -1; } "),
+                    style_sheet.insertRule(".narrative:after { -webkit-text-stroke: .1em black; } ")
+                ),
+                s
+            )
+
             document.querySelector("#player_canvas").appendChild(narrative_div)
         })
 
@@ -300,19 +317,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     })
                 }
 
-                var style = document.createElement("style")
-                var style_sheet = (
-                    document.head.append(style),
-                    style.type = 'text/css',
-                    style.id = "narrative_style",
-                    style.sheet
-                )
-                style_sheet.insertRule(".narrative:after { content: attr(innerHTML) } ")
-                style_sheet.insertRule(".narrative:after { position: absolute; } ")
-                style_sheet.insertRule(".narrative:after { left: 0px; top: 0px} ")
-                style_sheet.insertRule(".narrative:after { z-index: -1; } ")
-                style_sheet.insertRule(".narrative:after { -webkit-text-stroke: .1em black; } ")
-
                 narrative_msg.innerHTML = cue["message.text"]
                 narrative_msg.setAttribute("innerHTML", narrative_msg.innerHTML)
 
@@ -339,7 +343,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                         }
                     )
                 }()
-                style.remove()
             },
             hide: async function () {
                 await DOMObjectFadeEffect(narrative_msg).apply({
@@ -372,7 +375,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
         var speech_msg = document.createElement("span")
         speech_div.appendChild(speech_msg)
-        speech_msg.className += "speech"
+        speech_msg.id = "speech"
         speech_msg.style.display = "inline-block"
         speech_msg.style.width = "100%"
         speech_msg.style.height = "auto"
@@ -386,10 +389,30 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         speech_msg.style.whiteSpace = "no-wrap"
 
         ret.addEventListener("onsetupui", () => {
+            document.querySelector("#player_speech_style") || (
+                style = document.createElement("style"),
+                document.head.append(style),
+                style.type = 'text/css',
+                style.id = "player_speech_style",
+                style_sheet = style.sheet,
+                (
+                    style_sheet.insertRule("#speech:after { content: attr(innerHTML) } "),
+                    style_sheet.insertRule("#speech:after { position: absolute; } "),
+                    style_sheet.insertRule("#speech:after { left: 0px; top: 0px} "),
+                    style_sheet.insertRule("#speech:after { z-index: -1; } "),
+                    style_sheet.insertRule("#speech:after { -webkit-text-stroke: 0.1em white; } "),
+
+                    style_sheet.insertRule("#speech.self { color: rgb(60, 60, 60); } "),
+                    style_sheet.insertRule("#speech.chara { color: black; } ")
+                )
+            )
+
             document.querySelector("#player_canvas").appendChild(speech_div)
         })
 
         ret.addEventListener("onreset", () => {
+            _ = (style = document.querySelector("#player_speech_style")) && style.remove()
+
             speech_msg.innerHTML = ""
         })
 
@@ -401,30 +424,13 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 var data = content.data
                 this.update_message_visibility()
 
-                var chara_sex = cue["audio"] ? "female" : "male"
-
-                var outline_color
-                if (chara_sex == "female") {
-                    standing.set_spotlight(true)
-                    speech_msg.style.color = "black"
-                    cue["message.text"] = cue["message.text"].replace(/^「(.+)/g, "$1").replace(/(.+)」$/g, "$1")
+                if (cue["chara.name"] == null) { // Self
+                    standing.set_spotlight([], true)
+                    speech_msg.className = "self"
                 } else {
-                    standing.set_spotlight(false)
-                    speech_msg.style.color = "rgb(60, 60, 60)"
+                    standing.set_spotlight(Array.isArray(cue["chara.name"]) ? cue["chara.name"] : [cue["chara.name"]], true)
+                    speech_msg.className = "chara"
                 }
-
-                var style = document.createElement("style")
-                var style_sheet = (
-                    document.head.append(style),
-                    style.type = 'text/css',
-                    style.id = "speech_style",
-                    style.sheet
-                )
-                style_sheet.insertRule(".speech:after { content: attr(innerHTML) } ")
-                style_sheet.insertRule(".speech:after { position: absolute; } ")
-                style_sheet.insertRule(".speech:after { left: 0px; top: 0px} ")
-                style_sheet.insertRule(".speech:after { z-index: -1; } ")
-                style_sheet.insertRule(".speech:after { -webkit-text-stroke: 0.1em white; } ")
 
                 speech_msg.innerHTML = cue["message.text"]
                 speech_msg.setAttribute("innerHTML", speech_msg.innerHTML)
@@ -432,8 +438,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 function clear() {
                     speech_msg.setAttribute("innerHTML", "")
                     speech_msg.innerHTML = ""
-
-                    style.remove()
                 }
                 if (cue["audio"]) {
                     await async function () {
@@ -487,23 +491,37 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     }()
 
     var standing = function () {
-        var standing_img = {
-            0: null,
-            1: null,
-        }
+        var standing_img = {}
 
         ret.addEventListener("onreset", () => {
-            Object.values(standing_img).filter(e => e != null).forEach(
-                e => e.remove()
+            _ = (style = document.querySelector("#player_standing_style")) && style.remove()
+
+            document.querySelectorAll(".standing").forEach(d => d.remove())
+        })
+
+        ret.addEventListener("onsetupui", () => {
+            document.querySelector("#player_standing_style") || (
+                style = document.createElement("style"),
+                document.head.append(style),
+                style.type = 'text/css',
+                style.id = "player_standing_style",
+
+                style_sheet = style.sheet,
+                (
+                    style_sheet.insertRule(".standing.spotlight { z-index: -100 } "),
+                    style_sheet.insertRule(".standing.no-spotlight { z-index: -199 } "),
+                    style_sheet.insertRule(".standing.no-spotlight { filter: brightness(50%) } ")
+                )
             )
         })
 
-        function put_standing(idx, image, scale) {
+        function put_standing(id, image, scale) {
             (scale === undefined) && (scale = 1)
-            var img = standing_img[idx] || (
+            standing_img[id] = standing_img[id] || (
                 d = document.createElement("img"),
                 document.querySelector("#player_canvas").appendChild(d),
-                d.id = "standing_" + idx,
+                d.id = "standing_" + id,
+                d.classList.add("standing"), d.classList.add("no-spotlight"),
                 d.style.display = "none",
                 d.style.position = "absolute",
                 d.style.height = scale * 100 + "em",
@@ -513,35 +531,49 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 d.style.zIndex = "-100",
                 d
             )
-            img.src = image.currentSrc
-            img.style.display = null
+            standing_img[id].src = image.currentSrc
+            standing_img[id].style.display = null
         }
 
         return {
             show: async function (cue, content) {
                 var image = content.data.standing[cue["image"]]
-                put_standing(cue["chara.idx"] || 0, image, cue["image.scale"])
+                put_standing(cue["chara.name"] || 0, image, cue["image.scale"])
             },
-            set_spotlight: function (flag, idx) {
-                var targets = []
-                if (idx === undefined) { targets = Object.values(standing_img).filter(e => e != null) }
-                else { targets.push(standing_img[idx]) }
+            set_spotlight: function (chara_names, exclusive) {
+                if (!chara_names) { chara_names = Object.keys(standing_img) }
 
-                targets.forEach(
-                    div => {
-                        div.style.zIndex = flag ? "-100" : "-199"
-                        div.style.filter = flag ? null : "brightness(50%)"
+                Object.keys(standing_img).forEach(
+                    id => {
+                        function spotlight(flag) {
+                            if (standing_img[id]) {
+                                [...standing_img[id].classList.values()].forEach(c => {
+                                    if (c == "spotlight" || c == "no-spotlight") {
+                                        standing_img[id].classList.replace(c, flag ? "spotlight" : "no-spotlight")
+                                    }
+                                })
+                            }
+                        }
+                        if (chara_names.includes(id)) {
+                            spotlight(true)
+                        } else {
+                            if (exclusive) {
+                                spotlight(false)
+                            }
+                        }
                     }
                 )
             },
-            hide: async function (idx) {
-                var targets = []
-                if (idx === undefined) { targets = Object.values(standing_img) }
-                else { targets.push(standing_img[idx]) }
+            hide: async function (chara_names) {
+                if (chara_names === undefined) { targets = Object.keys(standing_img) }
 
-                targets.forEach(
-                    div => {
-                        div.style.display = "none"
+                chara_names.forEach(
+                    id => {
+                        if (standing_img[id]) {
+                            standing_img[id].remove()
+                            standing_img[id] = null
+                            delete standing_img[id]
+                        }
                     }
                 )
             },
