@@ -24,17 +24,9 @@ _ = function () {
     player_style_sheet.insertRule("#player { background-color: black; }")
     player_style_sheet.insertRule("#player { z-index: 999; }")
 
-    player_style_sheet.insertRule("#player_viewport { position: relative; }")
-    player_style_sheet.insertRule("#player_viewport { max-height: 100%; }")
-    player_style_sheet.insertRule("#player_viewport { max-width: 100%; }")
-    player_style_sheet.insertRule("#player_viewport { left: 50%; }")
-    player_style_sheet.insertRule("#player_viewport { top: 50%; }")
-    player_style_sheet.insertRule("#player_viewport { aspect-ratio: 16 / 9; }")
-    player_style_sheet.insertRule("#player_viewport { transform: translate(-50%, -50%); }")
-
     player_style_sheet.insertRule("#player_canvas { position: relative; }")
-    player_style_sheet.insertRule("#player_canvas { top: 0px; }")
-    player_style_sheet.insertRule("#player_canvas { left: 0px; }")
+    player_style_sheet.insertRule("#player_canvas { top: 50%; }")
+    player_style_sheet.insertRule("#player_canvas { left: 50%; }")
     player_style_sheet.insertRule("#player_canvas { width: 1920px; }")
     player_style_sheet.insertRule("#player_canvas { height: 1080px; }")
     player_style_sheet.insertRule("#player_canvas { overflow: hidden; }")
@@ -596,7 +588,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         anim_div.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio)) translate(50%, 50%)"
 
         var rescale_self = function () {
-            anim_div.style.setProperty("--scale-ratio", anim_div.parentNode.clientWidth / anim_div.clientWidth)
+            anim_div.style.setProperty("--scale-ratio", Math.min(anim_div.parentNode.clientWidth / anim_div.clientWidth, anim_div.parentNode.clientHeight / anim_div.clientHeight))
         }
 
         window.addEventListener("resize", rescale_self)
@@ -688,16 +680,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         document.body.append(player_div)
         document.body.style.overflow = "hidden"
 
-        var viewport = document.createElement("div")
-        viewport.id = "player_viewport"
-        player_div.appendChild(viewport)
-
         var canvas = document.createElement("div")
         canvas.id = "player_canvas"
-        viewport.appendChild(canvas)
-        canvas.style.transform = "translate(-50%, 0%) scale(var(--scale-ratio)) translate(50%, 0%)"
+        player_div.appendChild(canvas)
+        canvas.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio))"
         var rescale_self = function () {
-            canvas.style.setProperty("--scale-ratio", viewport.clientWidth / canvas.clientWidth)
+            canvas.style.setProperty("--scale-ratio", Math.min(canvas.parentNode.clientWidth / canvas.clientWidth, canvas.parentNode.clientHeight / canvas.clientHeight))
         }
         rescale_self()
         window.addEventListener("resize", rescale_self)
