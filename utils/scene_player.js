@@ -377,7 +377,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         speech_msg.style.width = "100%"
         speech_msg.style.height = "auto"
         speech_msg.style.fontFamily = "SceneFont"
-        speech_msg.style.fontSize = ((p = search_params.get("speech_size")) ? p : 1) * 4.8 + "em"
+        speech_msg.style.fontSize = ((p = search_params.get("speech_size")) ? p : 1) * 4.5 + "em"
         speech_msg.style.lineHeight = "1.2"
         speech_msg.style.userSelect = "none"
         speech_msg.style.lineBreak = "anywhere"
