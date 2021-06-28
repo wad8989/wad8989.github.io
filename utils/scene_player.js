@@ -27,8 +27,10 @@ _ = function () {
     player_style_sheet.insertRule("#player_viewport { position: relative; }")
     player_style_sheet.insertRule("#player_viewport { max-height: 100%; }")
     player_style_sheet.insertRule("#player_viewport { max-width: 100%; }")
+    player_style_sheet.insertRule("#player_viewport { left: 50%; }")
+    player_style_sheet.insertRule("#player_viewport { top: 50%; }")
     player_style_sheet.insertRule("#player_viewport { aspect-ratio: 16 / 9; }")
-    player_style_sheet.insertRule("#player_viewport { transform: translate(calc(50vw - 50%), calc(50vh - 50%)); }")
+    player_style_sheet.insertRule("#player_viewport { transform: translate(-50%, -50%); }")
 
     player_style_sheet.insertRule("#player_canvas { position: relative; }")
     player_style_sheet.insertRule("#player_canvas { top: 0px; }")
