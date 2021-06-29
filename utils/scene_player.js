@@ -669,7 +669,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     function reset() {
         playing_status.reset()
 
-        document.querySelector("#player") && player_div.remove()
+        if (e = document.querySelector("#player")) e.remove()
         document.body.style.overflow = null
 
         ret.dispatchEvent(new Event("onreset"))
@@ -679,6 +679,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         // Basic
         document.body.append(player_div)
         document.body.style.overflow = "hidden"
+        player_div.requestFullscreen()
 
         var canvas = document.createElement("div")
         canvas.id = "player_canvas"
