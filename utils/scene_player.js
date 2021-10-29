@@ -239,9 +239,10 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_div.style.opacity = 0
         narrative_div.style.position = "absolute"
         narrative_div.style.width = "100%"
-        narrative_div.style.height = "100%"
+        narrative_div.style.height = "30%"
+        narrative_div.style.bottom = 0
         narrative_div.style.zIndex = "1000"
-        narrative_div.style.backgroundColor = "rgba(0, 0, 0, 0.15)"
+        narrative_div.style.backgroundImage = "linear-gradient(0deg, rgba(0, 0, 0, 0.7) 20%, transparent)"
 
         var narrative_msg = document.createElement("span")
         narrative_div.appendChild(narrative_msg)
