@@ -170,7 +170,7 @@ var FlashEffect = function (target) {
 
     ret.addEventListener("onreset", () => {
         effect_div.remove()
-    })
+    });
 
     function transit_state(next) {
         if (state == next) return
@@ -678,9 +678,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
     function setup_ui() {
         // Basic
-        document.body.append(player_div)
-        document.body.style.overflow = "hidden"
-        player_div.requestFullscreen()
+        document.body.append(player_div);
+        player_div.requestFullscreen();
+
+        player_div.addEventListener("wheel", e => {
+            e.stopPropagation();
+        });
 
         var canvas = document.createElement("div")
         canvas.id = "player_canvas"
