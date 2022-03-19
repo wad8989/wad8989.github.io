@@ -278,11 +278,24 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 s.id = "player_narrative_style",
                 style_sheet = s.sheet,
                 (
-                    style_sheet.insertRule(".narrative:after { content: attr(innerHTML) } "),
-                    style_sheet.insertRule(".narrative:after { position: absolute; } "),
-                    style_sheet.insertRule(".narrative:after { left: 0px; top: 0px} "),
-                    style_sheet.insertRule(".narrative:after { z-index: -1; } "),
-                    style_sheet.insertRule(".narrative:after { -webkit-text-stroke: .1em black; } ")
+                    style_sheet.insertRule(`
+                    .narrative { 
+                        color: white;
+                    }`),
+                    style_sheet.insertRule(`
+                    .narrative {
+                        --outer-stroke-width: .1em;
+                        --outer-stroke-color: black;
+                        text-shadow:
+                        -1px -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        0   -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px  0   var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px  1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        0    1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        -1px  1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        -1px  0   var(--outer-stroke-width) var(--outer-stroke-color);
+                    }`)
                 ),
                 s
             )
@@ -319,7 +332,6 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 }
 
                 narrative_msg.innerHTML = cue["message.text"];
-                narrative_msg.setAttribute("innerHTML", narrative_msg.innerHTML);
 
                 await DOMObjectFadeEffect(narrative_msg).apply({
                     fade: "in",
@@ -376,9 +388,11 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         speech_div.style.transform = "translate(-50%, 0%)";
         speech_div.style.zIndex = "1200";
 
-        var speech_msg = document.createElement("span");
-        speech_div.appendChild(speech_msg);
-        speech_msg.id = "speech";
+        var speech_msg_parent = speech_div;
+
+        var speech_msg = document.createElement("div");
+        speech_msg_parent.appendChild(speech_msg);
+        speech_msg.classList.add("speech");
         speech_msg.style.display = "inline-block";
         speech_msg.style.width = "100%";
         speech_msg.style.height = "auto";
@@ -399,14 +413,28 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 style.id = "player_speech_style",
                 style_sheet = style.sheet,
                 (
-                    style_sheet.insertRule("#speech:after { content: attr(innerHTML) } "),
-                    style_sheet.insertRule("#speech:after { position: absolute; } "),
-                    style_sheet.insertRule("#speech:after { left: 0px; top: 0px} "),
-                    style_sheet.insertRule("#speech:after { z-index: -1; } "),
-                    style_sheet.insertRule("#speech:after { -webkit-text-stroke: 0.1em white; } "),
-
-                    style_sheet.insertRule("#speech.self { color: rgb(60, 60, 60); } "),
-                    style_sheet.insertRule("#speech.chara { color: black; } ")
+                    style_sheet.insertRule(`
+                    .speech { 
+                        color: black;
+                    }`),
+                    style_sheet.insertRule(`
+                    .speech {
+                        --outer-stroke-width: .1em;
+                        --outer-stroke-color: white;
+                        text-shadow:
+                        -1px -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        0   -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px -1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px  0   var(--outer-stroke-width) var(--outer-stroke-color),
+                        1px  1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        0    1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        -1px  1px var(--outer-stroke-width) var(--outer-stroke-color),
+                        -1px  0   var(--outer-stroke-width) var(--outer-stroke-color);
+                    }`),
+                    style_sheet.insertRule(`
+                    .speech[speech-person=self] { 
+                        color: rgb(60, 60, 60); 
+                    }`)
                 )
             );
 
@@ -429,17 +457,15 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
                 if (cue["chara.name"] == null) { // Self
                     standing.set_spotlight([], true)
-                    speech_msg.className = "self"
+                    speech_msg.setAttribute("speech-person", "self");
                 } else {
                     standing.set_spotlight(Array.isArray(cue["chara.name"]) ? cue["chara.name"] : [cue["chara.name"]], true)
-                    speech_msg.className = "chara"
+                    speech_msg.setAttribute("speech-person", "chara");
                 }
 
                 speech_msg.innerHTML = cue["message.text"]
-                speech_msg.setAttribute("innerHTML", speech_msg.innerHTML)
 
                 function clear() {
-                    speech_msg.setAttribute("innerHTML", "")
                     speech_msg.innerHTML = ""
                 }
                 if (cue["audio"]) {
@@ -629,7 +655,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     // Event listener
     ret.addEventListener("onsetupui", function () {
         var click = listen_on(
-            window,
+            player_div,
             "click",
             (e) => {
                 e.stopPropagation();
