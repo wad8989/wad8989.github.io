@@ -252,7 +252,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_msg.style.opacity = 0
         narrative_msg.style.display = "inline-block"
         narrative_msg.style.maxWidth = "70%"
-        narrative_msg.style.width = "fit-content"
+        narrative_msg.style.width = "max-content"
         narrative_msg.style.height = "auto"
         narrative_msg.style.fontFamily = "SceneFont"
         narrative_msg.style.fontSize = ((p = search_params.get("narrative_size")) ? p : 1) * 3 + "em"
@@ -381,7 +381,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         var speech_div = document.createElement("div");
         speech_div.style.position = "absolute";
         speech_div.style.maxWidth = "85%";
-        speech_div.style.width = "fit-content";
+        speech_div.style.width = "max-content";
         speech_div.style.height = "auto";
         speech_div.style.bottom = "10%";
         speech_div.style.left = "50%";
