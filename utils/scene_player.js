@@ -563,8 +563,8 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                 d.style.zIndex = "-100",
                 d
             )
-            standing_img[id].src = image.currentSrc
-            standing_img[id].style.display = null
+            standing_img[id].src = image.currentSrc;
+            standing_img[id].style.display = null;
         };
 
         return {
@@ -613,14 +613,14 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     }()
 
     var anim = function () {
-        var anim_div = document.createElement("div")
-        anim_div.style.zIndex = 100
-        anim_div.style.display = "none"
-        anim_div.style.position = "absolute"
-        anim_div.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio)) translate(50%, 50%)"
+        var anim_div = document.createElement("div");
+        anim_div.style.zIndex = 100;
+        anim_div.style.display = "none";
+        anim_div.style.position = "absolute";
+        anim_div.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio)) translate(50%, 50%)";
 
         var rescale_self = function () {
-            anim_div.style.setProperty("--scale-ratio", Math.min(anim_div.parentNode.clientWidth / anim_div.clientWidth, anim_div.parentNode.clientHeight / anim_div.clientHeight))
+            anim_div.style.setProperty("--scale-ratio", Math.min(anim_div.parentNode.clientWidth / anim_div.clientWidth, anim_div.parentNode.clientHeight / anim_div.clientHeight));
         }
 
         window.addEventListener("resize", rescale_self)
@@ -634,20 +634,20 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
         return {
             show: async function (cue, content) {
-                var anim_obj = content.data.anim[cue["anim"]]
+                playing_status["anim"] && playing_status["anim"].stop();
 
-                playing_status["anim"] && playing_status["anim"].stop()
-                playing_status["anim"] = anim_obj
+                var anim_obj = content.data.anim[cue["anim"]];
+                playing_status["anim"] = anim_obj;
 
-                anim_div.style.display = null
-                anim_obj.play(anim_div)
-                rescale_self()
+                anim_div.style.display = null;
+                anim_obj.play(anim_div);
+                rescale_self();
             },
             hide: async function () {
-                playing_status["anim"] = null
+                playing_status["anim"].stop();
+                playing_status["anim"] = null;
 
-                anim_div.style.display = "none"
-                anim_obj.done()
+                anim_div.style.display = "none";
             },
         }
     }()
@@ -814,8 +814,11 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     } break
                 case "anim":
                     {
-
-                        anim.show(cue, content)
+                        if (cue["anim"]) {
+                            anim.show(cue, content);
+                        } else {
+                            await anim.hide();
+                        }
                     } break
                 case "effect":
                     {
