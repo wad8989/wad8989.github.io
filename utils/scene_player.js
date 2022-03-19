@@ -240,7 +240,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_div.style.opacity = 0
         narrative_div.style.position = "absolute"
         narrative_div.style.width = "100%"
-        narrative_div.style.height = "30%"
+        narrative_div.style.minHeight = "20%"
         narrative_div.style.bottom = 0
         narrative_div.style.zIndex = "1000"
         narrative_div.style.backgroundImage = "linear-gradient(0deg, rgba(0, 0, 0, 0.7) 20%, transparent)"
@@ -251,7 +251,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_msg.style.position = "absolute"
         narrative_msg.style.opacity = 0
         narrative_msg.style.display = "inline-block"
-        narrative_msg.style.maxWidth = "70%"
+        narrative_msg.style.maxWidth = "75%"
         narrative_msg.style.width = "max-content"
         narrative_msg.style.height = "auto"
         narrative_msg.style.fontFamily = "SceneFont"
@@ -264,10 +264,10 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         narrative_msg.style.transform = "translate(-50%, -50%)"
 
         ret.addEventListener("onreset", () => {
-            _ = (style = document.querySelector("#player_narrative_style")) && style.remove()
+            _ = (style = document.querySelector("#player_narrative_style")) && style.remove();
 
-            narrative_msg.innerHTML = ""
-            narrative_div.remove()
+            narrative_msg.innerHTML = "";
+            narrative_div.remove();
         })
 
         ret.addEventListener("onsetupui", () => {
@@ -383,7 +383,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         speech_div.style.maxWidth = "85%";
         speech_div.style.width = "max-content";
         speech_div.style.height = "auto";
-        speech_div.style.bottom = "10%";
+        speech_div.style.bottom = "60px";
         speech_div.style.left = "50%";
         speech_div.style.transform = "translate(-50%, 0%)";
         speech_div.style.zIndex = "1200";
