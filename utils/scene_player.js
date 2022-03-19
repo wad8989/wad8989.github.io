@@ -1,6 +1,7 @@
 var player_hotkey = {
     Exit: 27,
     Next: 13,
+    FastForward: 17,
     ToggleLoopingSpeech: 82,
     ToggleSpeechText: 32,
     ToggleNarrativeText: 78,
@@ -96,13 +97,13 @@ var DOMObjectFadeEffect = function (node) {
         new EventTarget(),
         FrameUpdate(
             (effect, params, update_time) => {
-                var factor = Math.min((update_time.elapsed_time / params.duration), 1)
-                if (params.fade == "out") factor = 1.0 - factor
+                var factor = params.duration ? Math.min((update_time.elapsed_time / params.duration), 1) : 1;
+                if (params.fade == "out") factor = 1.0 - factor;
 
-                node.style.opacity = 1.0 * factor
+                node.style.opacity = 1.0 * factor;
                 if (update_time.elapsed_time >= params.duration) {
-                    effect.dispatchEvent(new Event("onfadeend"))
-                    effect.done()
+                    effect.dispatchEvent(new Event("onfadeend"));
+                    effect.done();
                 }
             }
         )
@@ -213,18 +214,19 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     var active = false
     var playing_status = {
         reset: function () {
-            this["should_loop_speech"] = false
-            this["should_display_speech_text"] = (p = search_params.get("speech_text")) ? eval(p) : true
-            this["should_display_narrative_text"] = (p = search_params.get("narrative_text")) ? eval(p) : true
+            this["should_loop_speech"] = false;
+            this["fast_forward"] = false;
+            this["should_display_speech_text"] = (p = search_params.get("speech_text")) ? eval(p) : true;
+            this["should_display_narrative_text"] = (p = search_params.get("narrative_text")) ? eval(p) : true;
 
-            this["bgm"] && this["bgm"].pause()
-            this["bgm"] = null
+            this["bgm"] && this["bgm"].pause();
+            this["bgm"] = null;
 
-            this["vo"] && this["vo"].pause()
-            this["vo"] = null
+            this["vo"] && this["vo"].pause();
+            this["vo"] = null;
 
-            this["anim"] && this["anim"].stop()
-            this["anim"] = null
+            this["anim"] && this["anim"].stop();
+            this["anim"] = null;
         }
     }
 
@@ -287,7 +289,11 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             )
 
             document.querySelector("#player_canvas").appendChild(narrative_div)
-        })
+        });
+
+        var preferred_duration = (p) => {
+            return playing_status.fast_forward ? 0 : p;
+        };
 
         return {
             update_message_visibility: function () {
@@ -296,38 +302,38 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             },
             show: async function (cue) {
                 if (!playing_status["should_display_narrative_text"]) {
-                    await wait(500)
+                    await wait(500);
                     return
                 }
 
                 if (narrative_div.style.display == "none") {
-                    narrative_div.style.display = null
+                    narrative_div.style.display = null;
                     await DOMObjectFadeEffect(narrative_div).apply({
                         fade: "in",
-                        duration: 200,
-                    })
+                        duration: preferred_duration(200),
+                    });
                 } else {
                     await DOMObjectFadeEffect(narrative_msg).apply({
                         fade: "out",
-                        duration: 500,
-                    })
+                        duration: preferred_duration(500),
+                    });
                 }
 
-                narrative_msg.innerHTML = cue["message.text"]
-                narrative_msg.setAttribute("innerHTML", narrative_msg.innerHTML)
+                narrative_msg.innerHTML = cue["message.text"];
+                narrative_msg.setAttribute("innerHTML", narrative_msg.innerHTML);
 
                 await DOMObjectFadeEffect(narrative_msg).apply({
                     fade: "in",
-                    duration: 500,
-                })
+                    duration: preferred_duration(500),
+                });
 
                 await async function () {
                     return new Promise(
                         resolve => {
-                            var next_listener
+                            var next_listener;
                             var on_exit = () => {
-                                next_listener.cancel()
-                                resolve()
+                                next_listener.cancel();
+                                resolve();
                             }
                             next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true })
                             narrative_div.addEventListener("onvisibilityupdate", () => {
@@ -345,13 +351,13 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             hide: async function () {
                 await DOMObjectFadeEffect(narrative_msg).apply({
                     fade: "out",
-                    duration: 500,
+                    duration: preferred_duration(500),
                 })
                 narrative_msg.innerHTML = ""
 
                 await DOMObjectFadeEffect(narrative_div).apply({
                     fade: "out",
-                    duration: 200,
+                    duration: preferred_duration(200),
                 })
                 narrative_div.style.display = "none"
             },
@@ -441,26 +447,26 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     await async function () {
                         return new Promise(
                             resolve => {
-                                var next_listener
-                                var a = data["vo"][cue["audio"]]
+                                var next_listener;
+                                var a = data["vo"][cue["audio"]];
                                 var on_exit = () => {
                                     next_listener && next_listener.cancel()
                                     resolve()
-                                }
+                                };
 
-                                playing_status["vo"] = a
+                                playing_status["vo"] = a;
 
                                 a.onended = () => {
                                     wait(1000).
                                         then(on_exit)
-                                }
+                                };
 
-                                a.play()
+                                a.play();
 
                                 next_listener = listen_on(ret, "onrequestnext", () => {
-                                    a.pause()
-                                    on_exit()
-                                }, { once: true })
+                                    a.pause();
+                                    on_exit();
+                                }, { once: true });
                             }
                         )
                     }()
@@ -469,16 +475,16 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     await async function () {
                         return new Promise(
                             resolve => {
-                                var next_listener
+                                var next_listener;
                                 var on_exit = () => {
                                     next_listener && next_listener.cancel()
                                     resolve()
-                                }
-                                next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true })
+                                };
+                                next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true });
                                 wait(playing_status.should_display_speech_text ?
                                     cue["message.len"] * wait_per_char + 1000 :
                                     1000
-                                ).then(on_exit)
+                                ).then(on_exit);
                             }
                         )
                     }()
@@ -623,6 +629,13 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
     // Event listener
     ret.addEventListener("onsetupui", function () {
+        var click = listen_on(
+            window,
+            "click",
+            (e) => {
+                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
+            }
+        );
         var keydown = listen_on(
             window,
             "keydown",
@@ -643,15 +656,30 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                     narrative.update_message_visibility()
                 }
                 if (e.keyCode == player_hotkey.Next) {
-                    ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, }))
+                    !e["repeat"] && ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
+                }
+                if (e.keyCode == player_hotkey.FastForward) {
+                    playing_status.fast_forward = true;
+                    e["repeat"] && ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, fastForward: true }));
                 }
             }
-        )
+        );
+        var keyup = listen_on(
+            window,
+            "keyup",
+            (e) => {
+                if (e.keyCode == player_hotkey.FastForward) {
+                    playing_status.fast_forward = false;
+                }
+            }
+        );
 
         listen_on(ret, "onreset", () => {
-            keydown.cancel()
-        }, { once: true })
-    })
+            click.cancel();
+            keydown.cancel();
+            keyup.cancel();
+        }, { once: true });
+    });
 
     // Private function
     async function wait(duration) {
@@ -765,14 +793,12 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             prev_cue = cue
         }
 
-        var keep_pressing_next_listener = listen_on(ret, "onrequestnext", (e) => {
-            pressing = e.triggerEvent["repeat"]
-
-            if (!pressing) {
-                keep_pressing_next_listener.cancel()
-                ret.stop()
+        var end_listener = listen_on(ret, "onrequestnext", (e) => {
+            if (!e.fastForward) {
+                end_listener.cancel();
+                ret.stop();
             }
-        })
+        });
     }
 
     return ret;
