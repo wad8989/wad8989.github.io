@@ -486,6 +486,9 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                                         then(on_exit)
                                 };
 
+                                if (DEBUG) {
+                                    console.log(`audio[${cue["audio"]}]`);
+                                }
                                 a.play();
 
                                 next_listener = listen_on(ret, "onrequestnext", () => {
