@@ -772,18 +772,26 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
     }
 
     async function play_scene(content) {
-        var prev_cue = null
-        for (var cue of content.cue) {
-            if (!active) return
+        var prev_cue = null;
+        var cue = null;
+        var next = content.next ?? (() => {
+            var i = 0;
+            return () => {
+                if (i >= content.cue.length) return null;
+                return content.cue[i++];
+            }
+        })();
+        while (cue = next()) {
+            if (!active) return;
 
             if (prev_cue) {
                 switch (prev_cue.type) {
                     case "narrative":
                         {
                             if (cue.type != "narrative") {
-                                await narrative.hide()
+                                await narrative.hide();
                             }
-                        } break
+                        } break;
                 }
             }
 
@@ -797,21 +805,21 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                         a.loop = cue["loop"] !== undefined ? cue["loop"] : true
                         a.play()
 
-                    } break
+                    } break;
                 case "narrative":
                     {
                         await narrative.show(cue, content)
-                    } break
+                    } break;
                 case "standing":
                     {
                         standing.show(cue, content)
-                    } break
+                    } break;
                 case "speech":
                     {
                         do {
                             await speech.show(cue, content)
                         } while (playing_status.should_loop_speech)
-                    } break
+                    } break;
                 case "anim":
                     {
                         if (cue["anim"]) {
@@ -819,14 +827,18 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
                         } else {
                             await anim.hide();
                         }
-                    } break
+                    } break;
                 case "effect":
                     {
                         await cue.effect.play(cue, content)
-                    } break
+                    } break;
+                case "func":
+                    {
+                        await cue.func(cue, content);
+                    } break;
             }
 
-            prev_cue = cue
+            prev_cue = cue;
         }
 
         var end_listener = listen_on(ret, "onrequestnext", (e) => {
