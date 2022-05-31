@@ -199,8 +199,8 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
 
                 setup_ui()
 
-                var scene_content = await obtain_scene_content_func(info)
-                active && play_scene(scene_content)
+                var scene_content = await obtain_scene_content_func(info);
+                active && play_scene(scene_content);
             },
             stop: function () {
                 update_page_title(PageState.None)
@@ -773,73 +773,74 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             }
         }
     }
-
+    
     async function play_scene(content) {
         var prev_cue = null;
         var cue = null;
-        var next = content.next ?? (() => {
-            var i = 0;
-            return () => {
-                if (i >= content.cue.length) return null;
-                return content.cue[i++];
-            }
-        })();
-        while (cue = next()) {
-            if (!active) return;
 
-            if (prev_cue) {
-                switch (prev_cue.type) {
+        const cue_tmpl = {
+            cleanUp: async function (next_cue) {
+                switch (this.type) {
                     case "narrative":
                         {
-                            if (cue.type != "narrative") {
+                            if (next_cue.type != "narrative") {
                                 await narrative.hide();
                             }
                         } break;
                 }
+            },
+            exec: async function () {
+                var cue = this;
+                switch (cue.type) {
+                    case "bgm":
+                        {
+                            playing_status.bgm && AudioFadeOutEffect(playing_status.bgm).apply(3000);
+    
+                            var a = (playing_status.bgm = content.data.bgm[cue["audio"]]);
+                            a.volume = cue["volume"] || 1;
+                            a.loop = cue["loop"] !== undefined ? cue["loop"] : true;
+                            a.play();
+    
+                        } break;
+                    case "narrative":
+                        {
+                            await narrative.show(cue, content)
+                        } break;
+                    case "standing":
+                        {
+                            standing.show(cue, content)
+                        } break;
+                    case "speech":
+                        {
+                            do {
+                                await speech.show(cue, content)
+                            } while (playing_status.should_loop_speech)
+                        } break;
+                    case "anim":
+                        {
+                            if (cue["anim"]) {
+                                anim.show(cue, content);
+                            } else {
+                                await anim.hide();
+                            }
+                        } break;
+                    case "effect":
+                        {
+                            await cue.effect.play(cue, content)
+                        } break;
+                }
             }
+        };
 
-            switch (cue.type) {
-                case "bgm":
-                    {
-                        playing_status.bgm && AudioFadeOutEffect(playing_status.bgm).apply(3000)
+        for (cue of content.cue) {
+            cue = Object.assign({}, cue_tmpl, cue);
 
-                        var a = (playing_status.bgm = content.data.bgm[cue["audio"]])
-                        a.volume = cue["volume"] || 1
-                        a.loop = cue["loop"] !== undefined ? cue["loop"] : true
-                        a.play()
+            if (!active) return;
 
-                    } break;
-                case "narrative":
-                    {
-                        await narrative.show(cue, content)
-                    } break;
-                case "standing":
-                    {
-                        standing.show(cue, content)
-                    } break;
-                case "speech":
-                    {
-                        do {
-                            await speech.show(cue, content)
-                        } while (playing_status.should_loop_speech)
-                    } break;
-                case "anim":
-                    {
-                        if (cue["anim"]) {
-                            anim.show(cue, content);
-                        } else {
-                            await anim.hide();
-                        }
-                    } break;
-                case "effect":
-                    {
-                        await cue.effect.play(cue, content)
-                    } break;
-                case "func":
-                    {
-                        await cue.func(cue, content);
-                    } break;
+            if (prev_cue) {
+                await prev_cue.cleanUp(cue);
             }
+            await cue.exec();
 
             prev_cue = cue;
         }
