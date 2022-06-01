@@ -186,26 +186,26 @@ var FlashEffect = function (target) {
     return ret
 };
 
-var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
+var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
     var search_params = new URLSearchParams(window.location.search);
 
     // Variables
     var ret = Object.assign(
         new EventTarget(),
         {
-            play: async function (info) {
-                active = true
-                reset()
+            play: async function (info, flow_id) {
+                active = true;
+                reset();
 
-                setup_ui()
+                setup_ui();
 
-                var scene_content = await obtain_scene_content_func(info);
-                active && play_scene(scene_content);
+                var scene_content = await obtain_scene_content_func(info, flow_id);
+                active && play_scene(scene_content, flow_id);
             },
             stop: function () {
-                update_page_title(PageState.None)
-                active = false
-                reset()
+                update_page_title(PageState.None);
+                active = false;
+                reset();
             }
         }
     );
@@ -776,7 +776,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
         }
     }
     
-    async function play_scene(content) {
+    async function play_scene(content, flow_id) {
         var prev_cue = null;
         var cue = null;
 
@@ -834,7 +834,7 @@ var ScenePlayer = function (/**async function()**/obtain_scene_content_func) {
             }
         };
 
-        for (cue of content.cue) {
+        for (cue of content.flow[flow_id]) {
             cue = Object.assign({}, cue_tmpl, cue);
 
             if (!active) return;
