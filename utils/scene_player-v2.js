@@ -525,6 +525,19 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         }
     }();
 
+    var bgm = function () {
+        return {
+            play: async function (cue, content) {
+                playing_status.bgm && AudioFadeOutEffect(playing_status.bgm).apply(3000);
+    
+                var a = (playing_status.bgm = content.data.bgm[cue["audio"]]);
+                a.volume = cue["volume"] || 1;
+                a.loop = cue["loop"] !== undefined ? cue["loop"] : true;
+                a.play();
+            },
+        }
+    }();
+
     var standing = function () {
         var standing_img = {};
 
@@ -613,7 +626,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 )
             },
         };
-    }()
+    }();
 
     var anim = function () {
         var anim_div = document.createElement("canvas");
@@ -781,7 +794,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         var cue = null;
 
         const cue_tmpl = {
-            cleanUp: async function (next_cue) {
+            cleanUp: async function (player_res, next_cue) {
                 switch (this.type) {
                     case "narrative":
                         {
@@ -791,18 +804,12 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                         } break;
                 }
             },
-            exec: async function () {
+            exec: async function (player_res) {
                 var cue = this;
                 switch (cue.type) {
                     case "bgm":
                         {
-                            playing_status.bgm && AudioFadeOutEffect(playing_status.bgm).apply(3000);
-    
-                            var a = (playing_status.bgm = content.data.bgm[cue["audio"]]);
-                            a.volume = cue["volume"] || 1;
-                            a.loop = cue["loop"] !== undefined ? cue["loop"] : true;
-                            a.play();
-    
+                            bgm.play(cue, content);
                         } break;
                     case "narrative":
                         {
@@ -834,15 +841,27 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             }
         };
 
+        var player_res = {
+            content: content,
+            controller: {
+                bgm: bgm,
+                narrative: narrative,
+                standing: standing,
+                speech: speech,
+                anim: anim,
+            },
+            cue_tmpl: cue_tmpl,
+        };
+
         for (cue of content.flow[flow_id]) {
             cue = Object.assign({}, cue_tmpl, cue);
 
             if (!active) return;
 
             if (prev_cue) {
-                await prev_cue.cleanUp(cue);
+                await prev_cue.cleanUp(player_res, cue);
             }
-            await cue.exec();
+            await cue.exec(player_res);
 
             prev_cue = cue;
         }
