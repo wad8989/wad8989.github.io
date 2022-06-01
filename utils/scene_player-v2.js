@@ -654,12 +654,14 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             show: async function (cue, content) {
                 playing_status["anim"] && playing_status["anim"].stop();
 
-                var anim_obj = content.data.anim[cue["anim"]];
-                playing_status["anim"] = anim_obj;
-
-                anim_div.style.display = null;
-                anim_obj.play(anim_div);
-                rescale_self();
+                setTimeout(() => {
+                    var anim_obj = content.data.anim[cue["anim"]];
+                    playing_status["anim"] = anim_obj;
+    
+                    anim_div.style.display = null;
+                    anim_obj.play(anim_div);
+                    rescale_self();
+                }, 1);
             },
             hide: async function () {
                 playing_status["anim"].stop();
@@ -851,6 +853,14 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 anim: anim,
             },
             cue_tmpl: cue_tmpl,
+            listen: {
+                onrequestnext: function (callback, options)  {
+                    return listen_on(ret, "onrequestnext", callback, options);
+                },
+                onreset: function (callback, options) {
+                    return listen_on(ret, "onreset", callback, options);
+                },
+            },
         };
 
         for (cue of content.flow[flow_id]) {
