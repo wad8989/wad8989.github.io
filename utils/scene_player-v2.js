@@ -1,3 +1,4 @@
+window.DEBUG = window.DEBUG ?? false;
 var player_hotkey = {
     Exit: 27,
     Next: 13,
