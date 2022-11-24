@@ -573,7 +573,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 d.classList.add("standing"), d.classList.add("no-spotlight"),
                 d.style.display = "none",
                 d.style.position = "absolute",
-                d.style.height = scale * 100 + "em",
+                d.style.height = scale * 100 * (image.scale ?? 1) + "em",
                 d.style.bottom = "0",
                 d.style.left = "50%",
                 d.style.transform = "translate(-50%, 50%)",
