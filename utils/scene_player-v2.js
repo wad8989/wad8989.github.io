@@ -201,7 +201,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 setup_ui();
 
                 var scene_content = await obtain_scene_content_func(info, flow_id);
-                active && play_scene(scene_content, flow_id);
+                active && await play_scene(scene_content, flow_id);
             },
             stop: function () {
                 update_page_title(PageState.None);
