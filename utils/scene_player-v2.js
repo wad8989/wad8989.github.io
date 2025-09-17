@@ -482,20 +482,24 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
 
                                 playing_status["vo"] = a;
 
-                                a.onended = () => {
-                                    wait(1000).
-                                        then(on_exit)
-                                };
-
-                                if (DEBUG) {
-                                    console.log(`audio[${cue["audio"]}]`);
+                                try {
+                                    a.onended = () => {
+                                        wait(1000).
+                                            then(on_exit)
+                                    };
+    
+                                    if (DEBUG) {
+                                        console.log(`audio[${cue["audio"]}]`);
+                                    }
+                                    a.play();
+                                } catch (e) {
+                                    console.error(e);
+                                } finally {
+                                    next_listener = listen_on(ret, "onrequestnext", () => {
+                                        a?.pause();
+                                        on_exit();
+                                    }, { once: true });
                                 }
-                                a.play();
-
-                                next_listener = listen_on(ret, "onrequestnext", () => {
-                                    a.pause();
-                                    on_exit();
-                                }, { once: true });
                             }
                         )
                     }()
