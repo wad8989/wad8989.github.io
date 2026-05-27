@@ -202,6 +202,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 clear();
 
                 var scene_content = await obtain_scene_content_func(info, flow_id);
+                active && ret.dispatchEvent(new Event("oncontentready"));
                 active && await play_scene(scene_content, flow_id);
             },
             stop: function () {
@@ -780,6 +781,9 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             }
         });
 
+        var stale = player_div.querySelector("#player_canvas");
+        if (stale) stale.remove();
+
         var canvas = document.createElement("div");
         canvas.id = "player_canvas";
         player_div.appendChild(canvas);
@@ -848,6 +852,10 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                             } else {
                                 await anim.hide();
                             }
+                        } break;
+                    case "custom_cue":
+                        {
+                            await cue.play(player_res);
                         } break;
                     case "effect":
                         {
