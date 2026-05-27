@@ -681,14 +681,6 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
 
     // Event listener
     ret.addEventListener("onsetupui", function () {
-        var click = listen_on(
-            player_div,
-            "click",
-            (e) => {
-                e.stopPropagation();
-                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
-            }
-        );
         var keydown = listen_on(
             window,
             "keydown",
@@ -727,10 +719,19 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             }
         );
 
+        var click = listen_on(
+            player_div,
+            "click",
+            (e) => {
+                e.stopPropagation();
+                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
+            }
+        );
+
         listen_on(ret, "onreset", () => {
-            click.cancel();
             keydown.cancel();
             keyup.cancel();
+            click.cancel();
         }, { once: true });
     });
 
@@ -892,9 +893,10 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         var end_listener = listen_on(ret, "onrequestnext", (e) => {
             if (!e.fastForward) {
                 end_listener.cancel();
-                ret.stop();
+                ret.dispatchEvent(new Event("onsceneend"));
             }
         });
+        listen_on(ret, "onreset", () => { end_listener.cancel(); }, { once: true });
     }
 
     return ret;
