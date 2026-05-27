@@ -199,6 +199,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 reset();
 
                 setup_ui();
+                clear();
 
                 var scene_content = await obtain_scene_content_func(info, flow_id);
                 active && await play_scene(scene_content, flow_id);
@@ -207,7 +208,8 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 update_page_title(PageState.None);
                 active = false;
                 reset();
-            }
+            },
+            clear: function () { clear(); }
         }
     );
 
@@ -744,6 +746,12 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 )
             }
         )
+    }
+
+    function clear() {
+        player_div.querySelectorAll("canvas").forEach(c => {
+            c.getContext("2d").clearRect(0, 0, c.width, c.height);
+        });
     }
 
     function reset() {
