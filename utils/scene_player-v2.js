@@ -199,18 +199,15 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 reset();
 
                 setup_ui();
-                clear();
 
                 var scene_content = await obtain_scene_content_func(info, flow_id);
-                active && ret.dispatchEvent(new Event("oncontentready"));
                 active && await play_scene(scene_content, flow_id);
             },
             stop: function () {
                 update_page_title(PageState.None);
                 active = false;
                 reset();
-            },
-            clear: function () { clear(); }
+            }
         }
     );
 
@@ -643,18 +640,15 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         anim_div.style.zIndex = 100;
         anim_div.style.display = "none";
         anim_div.style.position = "absolute";
-        anim_div.style.top = "0";
-        anim_div.style.left = "0";
-        anim_div.style.width = "1920px";
-        anim_div.style.height = "1080px";
+        anim_div.style.transform = "translate(-50%, -50%) scale(var(--scale-ratio)) translate(50%, 50%)";
 
-        var pending_show = null;
+        var rescale_self = function () {
+            anim_div.style.setProperty("--scale-ratio", Math.min(anim_div.parentNode.clientWidth / anim_div.clientWidth, anim_div.parentNode.clientHeight / anim_div.clientHeight));
+        }
 
+        window.addEventListener("resize", rescale_self)
         ret.addEventListener("onreset", () => {
-            clearTimeout(pending_show);
-            pending_show = null;
-            anim_div.getContext("2d").clearRect(0, 0, anim_div.width, anim_div.height);
-            anim_div.style.display = "none";
+            window.removeEventListener("resize", rescale_self)
         })
 
         ret.addEventListener("onsetupui", () => {
@@ -664,26 +658,20 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         return {
             show: async function (cue, content) {
                 playing_status["anim"] && playing_status["anim"].stop();
-                clearTimeout(pending_show);
 
-                pending_show = setTimeout(() => {
-                    pending_show = null;
+                setTimeout(() => {
                     var anim_obj = content.data.anim[cue["anim"]];
                     playing_status["anim"] = anim_obj;
-
-                    anim_div.getContext("2d").clearRect(0, 0, anim_div.width, anim_div.height);
+    
                     anim_div.style.display = null;
                     anim_obj.play(anim_div);
-                    anim_div.style.width = "1920px";
-                    anim_div.style.height = "1080px";
+                    rescale_self();
                 }, 1);
             },
             hide: async function () {
-                if (playing_status["anim"]) {
-                    playing_status["anim"].stop();
-                    playing_status["anim"] = null;
-                }
-                anim_div.getContext("2d").clearRect(0, 0, anim_div.width, anim_div.height);
+                playing_status["anim"].stop();
+                playing_status["anim"] = null;
+
                 anim_div.style.display = "none";
             },
         }
@@ -691,6 +679,14 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
 
     // Event listener
     ret.addEventListener("onsetupui", function () {
+        var click = listen_on(
+            player_div,
+            "click",
+            (e) => {
+                e.stopPropagation();
+                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
+            }
+        );
         var keydown = listen_on(
             window,
             "keydown",
@@ -729,19 +725,10 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             }
         );
 
-        var click = listen_on(
-            player_div,
-            "click",
-            (e) => {
-                e.stopPropagation();
-                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
-            }
-        );
-
         listen_on(ret, "onreset", () => {
+            click.cancel();
             keydown.cancel();
             keyup.cancel();
-            click.cancel();
         }, { once: true });
     });
 
@@ -757,18 +744,6 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 )
             }
         )
-    }
-
-    function clear() {
-        player_div.querySelectorAll("canvas").forEach(c => {
-            c.getContext("2d").clearRect(0, 0, c.width, c.height);
-        });
-        var pc = player_div.querySelector("#player_canvas");
-        if (pc) {
-            pc.style.backgroundImage = '';
-            var overlay = pc.querySelector("#bg_fade_overlay");
-            if (overlay) overlay.remove();
-        }
     }
 
     function reset() {
@@ -795,9 +770,6 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 ret.stop();
             }
         });
-
-        var stale = player_div.querySelector("#player_canvas");
-        if (stale) stale.remove();
 
         var canvas = document.createElement("div");
         canvas.id = "player_canvas";
@@ -868,10 +840,6 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                                 await anim.hide();
                             }
                         } break;
-                    case "custom_cue":
-                        {
-                            await cue.play(player_res);
-                        } break;
                     case "effect":
                         {
                             await cue.effect.play(cue, content)
@@ -916,10 +884,9 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         var end_listener = listen_on(ret, "onrequestnext", (e) => {
             if (!e.fastForward) {
                 end_listener.cancel();
-                ret.dispatchEvent(new Event("onsceneend"));
+                ret.stop();
             }
         });
-        listen_on(ret, "onreset", () => { end_listener.cancel(); }, { once: true });
     }
 
     return ret;
