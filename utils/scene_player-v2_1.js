@@ -3,6 +3,7 @@ var player_hotkey = {
     Exit: 27,
     Next: 13,
     FastForward: 17,
+    ToggleFastForward: 9,
     ToggleLoopingSpeech: 82,
     ToggleSpeechText: 32,
     ToggleNarrativeText: 78,
@@ -197,6 +198,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             play: async function (info, flow_id) {
                 active = true;
                 reset();
+                playing_status["fast_forward_disabled"] = !!(info && info.disable_fast_forward);
 
                 setup_ui();
                 clear();
@@ -219,6 +221,8 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         reset: function () {
             this["should_loop_speech"] = false;
             this["fast_forward"] = false;
+            this["fast_forward_disabled"] = false;
+            this["fast_forward_toggle"] = false;
             this["should_display_speech_text"] = (p = search_params.get("speech_text")) ? eval(p) : true;
             this["should_display_narrative_text"] = (p = search_params.get("narrative_text")) ? eval(p) : true;
 
@@ -358,7 +362,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                                 }
                             })
 
-                            wait(cue["message.len"] * wait_per_char).
+                            wait(preferred_duration(cue["message.len"] * wait_per_char)).
                                 then(on_exit)
                         }
                     )
@@ -444,7 +448,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                     }`),
                     style_sheet.insertRule(`
                     .speech[speech-person=self] {
-                        color: rgb(60, 60, 60);
+                        color: rgb(21, 97, 121);
                     }`)
                 )
             );
@@ -460,7 +464,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 var data = content.data
                 this.update_message_visibility()
 
-                if (cue["chara.name"] == null) { // Self
+                if (cue["chara.name"] == null || cue["chara.asSelf"]) { // Self
                     standing.set_spotlight([], true)
                     speech_msg.setAttribute("speech-person", "self");
                 } else {
@@ -518,10 +522,8 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                                     resolve()
                                 };
                                 next_listener = listen_on(ret, "onrequestnext", on_exit, { once: true });
-                                wait(playing_status.should_display_speech_text ?
-                                    cue["message.len"] * wait_per_char + 1000 :
-                                    1000
-                                ).then(on_exit);
+                                var _d = playing_status.should_display_speech_text ? cue["message.len"] * wait_per_char + 1000 : 1000;
+                                wait(playing_status.fast_forward ? 0 : _d).then(on_exit);
                             }
                         )
                     }()
@@ -668,7 +670,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 playing_status["anim"] = anim_obj;
 
                 anim_div.style.display = null;
-                anim_div.style.opacity = '';
+                if (cue.loop !== false) anim_div.style.opacity = '';
                 if (typeof anim_obj.setLoop === 'function') anim_obj.setLoop(cue.loop !== false);
                 anim_obj.play(anim_div);
                 anim_div.style.width = "1920px";
@@ -686,6 +688,20 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
 
     // Event listener
     ret.addEventListener("onsetupui", function () {
+        var fast_forward_looper = null;
+        function set_ff_toggle(on, triggerEvent) {
+            playing_status.fast_forward_toggle = on;
+            playing_status.fast_forward = on;
+            if (on) {
+                ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: triggerEvent, fastForward: true }));
+                fast_forward_looper = setInterval(function () {
+                    ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { fastForward: true }));
+                }, 100);
+            } else {
+                clearInterval(fast_forward_looper);
+                fast_forward_looper = null;
+            }
+        }
         var keydown = listen_on(
             window,
             "keydown",
@@ -708,9 +724,13 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 if (e.keyCode == player_hotkey.Next) {
                     !e["repeat"] && ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
                 }
-                if (e.keyCode == player_hotkey.FastForward) {
+                if (e.keyCode == player_hotkey.FastForward && !playing_status.fast_forward_disabled) {
                     playing_status.fast_forward = true;
-                    e["repeat"] && ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, fastForward: true }));
+                    ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, fastForward: true }));
+                }
+                if (e.keyCode == player_hotkey.ToggleFastForward && !e["repeat"] && !playing_status.fast_forward_disabled) {
+                    e.preventDefault();
+                    set_ff_toggle(!playing_status.fast_forward_toggle, e);
                 }
             }
         );
@@ -733,10 +753,16 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             }
         );
 
+        listen_on(ret, "onrequestnext", function(e) {
+            if (!e.fastForward && playing_status.fast_forward_toggle) set_ff_toggle(false);
+        });
+
         listen_on(ret, "onreset", () => {
             keydown.cancel();
             keyup.cancel();
             click.cancel();
+            clearInterval(fast_forward_looper);
+            fast_forward_looper = null;
         }, { once: true });
     });
 
@@ -841,6 +867,13 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                         {
                             bgm.play(cue, content);
                         } break;
+                    case "bgm_fade_out":
+                        {
+                            if (playing_status.bgm) {
+                                await AudioFadeOutEffect(playing_status.bgm).apply(cue.duration || 500);
+                                playing_status.bgm = null;
+                            }
+                        } break;
                     case "narrative":
                         {
                             await narrative.show(cue, content)
@@ -865,7 +898,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                         } break;
                     case "custom_cue":
                         {
-                            await cue.play(player_res);
+                            await cue.play(player_res, exec_cue);
                         } break;
                     case "effect":
                         {
@@ -900,20 +933,79 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         var abort_promise = new Promise(resolve => { abort_resolve = resolve; });
         listen_on(ret, "onreset", () => { scene_aborted = true; abort_resolve(); }, { once: true });
 
+        var exec_cue = async function(c) {
+            if (Array.isArray(c)) {
+                var sub_queue = Promise.resolve();
+                var sub_parallel = [];
+                c.forEach(function(item) {
+                    var w = Object.assign({}, cue_tmpl, item);
+                    if (item.blocking === false) {
+                        var pd = Promise.all(sub_parallel.slice());
+                        sub_queue = sub_queue.then(function() { return pd; })
+                                             .then(function() { return w.exec(player_res); });
+                    } else {
+                        var pre = sub_queue;
+                        sub_parallel.push(pre.then(function() { return w.exec(player_res); }));
+                    }
+                });
+                await Promise.all([Promise.all(sub_parallel), sub_queue]);
+            } else {
+                await Object.assign({}, cue_tmpl, c).exec(player_res);
+            }
+        };
+
+        var other_chain = Promise.resolve();
+        var group_promises = [];
+        var pending_cleanup = null;
+        var last_blocking = null;
+
         for (cue of content.flow[flow_id]) {
             cue = Object.assign({}, cue_tmpl, cue);
-
             if (scene_aborted) return;
 
-            if (prev_cue) {
-                await Promise.race([prev_cue.cleanUp(player_res, cue), abort_promise]);
+            if (cue.type === 'sync') {
+                var sync_done = Promise.all(group_promises);
+                await Promise.race([sync_done, abort_promise]);
                 if (scene_aborted) return;
-            }
-            await Promise.race([cue.exec(player_res), abort_promise]);
-            if (scene_aborted) return;
+                group_promises = [];
+                other_chain = Promise.all([other_chain, sync_done]);
+                if (last_blocking) { pending_cleanup = last_blocking; last_blocking = null; }
 
-            prev_cue = cue;
+            } else if (cue.blocking === false) {
+                if (group_promises.length > 0) {
+                    var parallel_done = Promise.all(group_promises);
+                    other_chain = (function(_c, _pd, _oc) {
+                        return _oc.then(function() { return _pd; }).then(function() {
+                            if (scene_aborted) return; return _c.exec(player_res);
+                        });
+                    }(cue, parallel_done, other_chain));
+                } else {
+                    other_chain = (function(_c, _oc) {
+                        return _oc.then(function() {
+                            if (scene_aborted) return; return _c.exec(player_res);
+                        });
+                    }(cue, other_chain));
+                }
+
+            } else {
+                if (pending_cleanup && group_promises.length === 0) {
+                    await Promise.race([pending_cleanup.cleanUp(player_res, cue), abort_promise]);
+                    if (scene_aborted) return;
+                    pending_cleanup = null;
+                }
+                var p = (function(_c, _pre) {
+                    return _pre.then(function() {
+                        if (scene_aborted) return; return _c.exec(player_res);
+                    });
+                }(cue, other_chain));
+                group_promises.push(p);
+                last_blocking = cue;
+            }
         }
+
+        await Promise.race([Promise.all(group_promises), abort_promise]);
+        await Promise.race([other_chain, abort_promise]);
+        if (scene_aborted) return;
 
         var end_listener = listen_on(ret, "onrequestnext", (e) => {
             if (!e.fastForward) {
