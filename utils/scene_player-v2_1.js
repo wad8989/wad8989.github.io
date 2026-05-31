@@ -5,8 +5,7 @@ var player_hotkey = {
     FastForward: 17,
     ToggleFastForward: 9,
     ToggleLoopingSpeech: 82,
-    ToggleSpeechText: 32,
-    ToggleNarrativeText: 78,
+    ToggleText: 32,
 };
 
 // Setup
@@ -196,6 +195,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         new EventTarget(),
         {
             play: async function (info, flow_id) {
+                var my_gen = ++play_gen;
                 active = true;
                 reset();
                 playing_status["fast_forward_disabled"] = !!(info && info.disable_fast_forward);
@@ -204,11 +204,12 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 clear();
 
                 var scene_content = await obtain_scene_content_func(info, flow_id);
+                if (play_gen !== my_gen) return;
                 active && ret.dispatchEvent(new Event("oncontentready"));
                 active && await play_scene(scene_content, flow_id);
             },
             stop: function () {
-                update_page_title(PageState.None);
+                play_gen++;
                 active = false;
                 reset();
             },
@@ -216,7 +217,15 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         }
     );
 
+    ret.menu_hooks = {
+        get_status:        function() { return playing_status; },
+        toggle_ff:         null,   // set by onsetupui
+        update_visibility: null,   // set by onsetupui
+        set_hold_ff:       null,   // set by menu builder
+    };
+
     var active = false;
+    var play_gen = 0;
     var playing_status = {
         reset: function () {
             this["should_loop_speech"] = false;
@@ -496,6 +505,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                                             then(on_exit)
                                     };
     
+                                    a.muted = !!window._scene_menu_vo_muted;
                                     if (DEBUG) {
                                         console.log(`audio[${cue["audio"]}]`);
                                     }
@@ -544,6 +554,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 var a = (playing_status.bgm = content.data.bgm[cue["audio"]]);
                 a.volume = cue["volume"] || 1;
                 a.loop = cue["loop"] !== undefined ? cue["loop"] : true;
+                a.muted = !!window._scene_menu_bgm_muted;
                 a.play();
             },
         }
@@ -689,6 +700,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
     // Event listener
     ret.addEventListener("onsetupui", function () {
         var fast_forward_looper = null;
+        var fast_forward_hold_looper = null;
         function set_ff_toggle(on, triggerEvent) {
             playing_status.fast_forward_toggle = on;
             playing_status.fast_forward = on;
@@ -702,6 +714,11 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 fast_forward_looper = null;
             }
         }
+        ret.menu_hooks.toggle_ff = function(on) { set_ff_toggle(on); };
+        ret.menu_hooks.update_visibility = function() {
+            speech.update_message_visibility();
+            narrative.update_message_visibility();
+        };
         var keydown = listen_on(
             window,
             "keydown",
@@ -711,22 +728,25 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 }
                 if (e.keyCode == player_hotkey.ToggleLoopingSpeech) {
                     playing_status.should_loop_speech = !playing_status.should_loop_speech
-                    update_page_title(playing_status.should_loop_speech ? PageState.Looping : PageState.None)
                 }
-                if (e.keyCode == player_hotkey.ToggleSpeechText) {
-                    playing_status.should_display_speech_text = !playing_status.should_display_speech_text
-                    speech.update_message_visibility()
+                if (e.keyCode == player_hotkey.ToggleText) {
+                    var _show = !(playing_status.should_display_speech_text && playing_status.should_display_narrative_text);
+                    playing_status.should_display_speech_text    = _show;
+                    playing_status.should_display_narrative_text = _show;
+                    speech.update_message_visibility();
+                    narrative.update_message_visibility();
                 }
-                if (e.keyCode == player_hotkey.ToggleNarrativeText) {
-                    playing_status.should_display_narrative_text = !playing_status.should_display_narrative_text
-                    narrative.update_message_visibility()
-                }
+
                 if (e.keyCode == player_hotkey.Next) {
                     !e["repeat"] && ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e }));
                 }
-                if (e.keyCode == player_hotkey.FastForward && !playing_status.fast_forward_disabled) {
+                if (e.keyCode == player_hotkey.FastForward && !e["repeat"] && !playing_status.fast_forward_disabled) {
                     playing_status.fast_forward = true;
+                    if (ret.menu_hooks.set_hold_ff) ret.menu_hooks.set_hold_ff(true);
                     ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { triggerEvent: e, fastForward: true }));
+                    fast_forward_hold_looper = setInterval(function () {
+                        ret.dispatchEvent(Object.assign(new Event("onrequestnext"), { fastForward: true }));
+                    }, 100);
                 }
                 if (e.keyCode == player_hotkey.ToggleFastForward && !e["repeat"] && !playing_status.fast_forward_disabled) {
                     e.preventDefault();
@@ -740,6 +760,9 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             (e) => {
                 if (e.keyCode == player_hotkey.FastForward) {
                     playing_status.fast_forward = false;
+                    clearInterval(fast_forward_hold_looper);
+                    fast_forward_hold_looper = null;
+                    if (ret.menu_hooks.set_hold_ff) ret.menu_hooks.set_hold_ff(false);
                 }
             }
         );
@@ -763,6 +786,8 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
             click.cancel();
             clearInterval(fast_forward_looper);
             fast_forward_looper = null;
+            clearInterval(fast_forward_hold_looper);
+            fast_forward_hold_looper = null;
         }, { once: true });
     });
 
@@ -931,7 +956,11 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         var scene_aborted = false;
         var abort_resolve;
         var abort_promise = new Promise(resolve => { abort_resolve = resolve; });
-        listen_on(ret, "onreset", () => { scene_aborted = true; abort_resolve(); }, { once: true });
+        listen_on(ret, "onreset", () => {
+            scene_aborted = true; abort_resolve();
+            var _sp = content.data && content.data.spine_players;
+            if (_sp) Object.keys(_sp).forEach(function(k) { if (_sp[k]) _sp[k].dispose(); });
+        }, { once: true });
 
         var exec_cue = async function(c) {
             if (Array.isArray(c)) {
@@ -1007,13 +1036,14 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
         await Promise.race([other_chain, abort_promise]);
         if (scene_aborted) return;
 
-        var end_listener = listen_on(ret, "onrequestnext", (e) => {
-            if (!e.fastForward) {
-                end_listener.cancel();
-                ret.dispatchEvent(new Event("onsceneend"));
-            }
-        });
-        listen_on(ret, "onreset", () => { end_listener.cancel(); }, { once: true });
+        // Stop FF looper when all content is done; otherwise it keeps firing
+        // fastForward:true events that block end_listener from ever firing onsceneend.
+        if (playing_status.fast_forward_toggle) {
+            if (ret.menu_hooks.toggle_ff) ret.menu_hooks.toggle_ff(false);
+            if (ret.menu_hooks.set_hold_ff) ret.menu_hooks.set_hold_ff(false);
+        }
+
+        ret.dispatchEvent(new Event("onsceneend"));
     }
 
     return ret;
