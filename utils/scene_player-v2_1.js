@@ -678,6 +678,7 @@ var ScenePlayerV2 = function (/**async function()**/obtain_scene_content_func) {
                 playing_status["anim"] && playing_status["anim"].stop();
 
                 var anim_obj = content.data.anim[cue["anim"]];
+                if (!anim_obj) return;
                 playing_status["anim"] = anim_obj;
 
                 anim_div.style.display = null;
